@@ -6,7 +6,7 @@ from steinmetz import atlas
 from steinmetz.config import ANATOMY_ORDER, DT, LATENCY_ORDER
 from steinmetz.regression import build_design
 from steinmetz.results import PSTH_T
-from steinmetz.style import CONTRA, IPSI, RASTER_BG, REGION_COLORS, clean, no_data, rotated_region_labels, shade
+from steinmetz.style import CONTRA, IPSI, MISS_CONTRA_RASTER, RASTER_BG, REGION_COLORS, clean, nice_top, no_data, rotated_region_labels, shade
 
 # rows of Fig 2a-c: (name, y0, y1) in the paper's pixels
 STIM_ROWS = (("Contra", 58, 83, "contra_correct"), ("Ipsi", 87, 123, "ipsi_correct"), ("Contra", 138, 156, "contra_miss"),
@@ -27,7 +27,7 @@ def row_trials(b):
     }
 
 
-ROW_COLOR = {"contra_correct": CONTRA, "ipsi_correct": IPSI, "contra_miss": "#a0522d", "ipsi_miss": IPSI, "contra_passive": "#999999", "ipsi_passive": "#000000"}
+ROW_COLOR = {"contra_correct": CONTRA, "ipsi_correct": IPSI, "contra_miss": MISS_CONTRA_RASTER, "ipsi_miss": IPSI, "contra_passive": "#999999", "ipsi_passive": "#000000"}
 
 
 def _raster(ax, spikes, events, marks, win, color, align_move=False):
@@ -36,9 +36,9 @@ def _raster(ax, spikes, events, marks, win, color, align_move=False):
     for i, k in enumerate(order):
         t0 = events[k] + (marks[k] if align_move else 0)
         s = spikes[np.searchsorted(spikes, t0 + win[0]):np.searchsorted(spikes, t0 + win[1])] - t0
-        ax.plot(s, np.full(len(s), i), ls="", marker="s", ms=0.7, mew=0, color=color)
-        if marks is not None:
-            ax.plot(-marks[k] if align_move else marks[k], i, "o", ms=1.8, color="#222222", mew=0)
+        ax.plot(s, np.full(len(s), i), ls="", marker="s", ms=1.0, mew=0, color=color)
+    if marks is not None:  # drawn last so the black dots sit on top, as in the paper
+        ax.plot(-marks[order] if align_move else marks[order], np.arange(len(order)), "o", ms=2.3, color="k", mew=0)
     ax.set_xlim(*win)
     ax.set_ylim(-1, max(len(events), 1))
     ax.axvline(0, color="#444444", lw=0.5, ls=(0, (3, 2)))
@@ -47,82 +47,101 @@ def _raster(ax, spikes, events, marks, win, color, align_move=False):
     ax.set_xticks([]), ax.set_yticks([])
 
 
-def raster_column(cv, res, session, cluster, x0, x1, title, title_color, letter=None, labels=False, dy=0):
-    """One column of Fig 2a-c. dy shifts the whole column, for layouts that stack columns."""
+def raster_column(cv, res, session, cluster, x0, x1, title, title_color, letter=None, labels=False):
+    """One column of Fig 2a-c. Row heights follow the trial counts, at one scale per column, as in the paper. Returns group centers."""
     if letter:
-        cv.letter(letter, x0 - 108 if labels else x0 - 8, 28 + dy)
-    cv.text((x0 + x1) / 2 + 12, 33 + dy, title, fontsize=9, color=title_color, fontweight="bold")
+        cv.letter(letter, x0 - 108 if labels else x0 - 8, 28)
+    cv.text((x0 + x1) / 2 + 12, 33, title, fontsize=9, color=title_color, fontweight="bold")
     if session is None:
-        a = cv.ax((x0, 58 + dy, x1, 397 + dy))
+        a = cv.ax((x0, 58, x1, 397))
         clean(a, False, False)
         no_data(a)
-        return
+        return {}
     b = res.base(session)
     spikes = res.spike_times(session, cluster)
     rows = row_trials(b)
-    for label, y0, y1, key in STIM_ROWS:
+    gaps = (4, 13, 4, 15, 4)
+    n = [max(len(rows[k][0]), 1) for *_, k in STIM_ROWS]
+    px = (268 - 52 - sum(gaps)) / sum(n)
+    y, centers = 52.0, {}
+    for i, (label, _, _, key) in enumerate(STIM_ROWS):
         ev, marks = rows[key]
-        a = cv.ax((x0, y0 + dy, x1, y1 + dy))
+        h = n[i] * px
+        a = cv.ax((x0, y, x1, y + h))
         _raster(a, spikes, ev, marks, (-0.2, 0.4), ROW_COLOR[key])
         if labels:
-            cv.text(x0 - 30, (y0 + y1) / 2 + dy, label, fontsize=7)
-    ax = cv.ax((x0, 280 + dy, x1, 285 + dy))
+            cv.text(x0 - 26, y + h / 2, label, fontsize=7)
+        centers[key] = y + h / 2
+        y += h + (gaps[i] if i < 5 else 0)
+    ax = cv.ax((x0, 274, x1, 279))
     clean(ax, False)
-    ax.set_xlim(-0.2, 0.4), ax.set_xticks([-0.2, 0, 0.2, 0.4])
-    ax.set_xticklabels(["-0.2", "0", "0.2", "0.4"])
+    ax.set_xlim(-0.2, 0.4), ax.set_xticks([-0.2, 0, 0.2, 0.4]), ax.set_xticklabels(["-0.2", "0", "0.2", "0.4"])
     if labels:
         ax.set_xlabel("Time from stimulus (s)")
-    for label, y0, y1, key in MOVE_ROWS:
+    n2 = [max(len(rows[k][0]), 1) for *_, k in MOVE_ROWS]
+    px2 = (400 - 327 - 6) / sum(n2)
+    y = 327.0
+    for i, (label, _, _, key) in enumerate(MOVE_ROWS):
         ev, marks = rows[key]
-        a = cv.ax((x0, y0 + dy, x1, y1 + dy))
+        h = n2[i] * px2
+        a = cv.ax((x0, y, x1, y + h))
         _raster(a, spikes, ev, marks, (-0.4, 0.2), ROW_COLOR[key], align_move=True)
         if labels:
-            cv.text(x0 - 30, (y0 + y1) / 2 + dy, label, fontsize=7)
-    ax = cv.ax((x0, 408 + dy, x1, 413 + dy))
+            cv.text(x0 - 26, y + h / 2, label, fontsize=7)
+        centers["move_" + key] = y + h / 2
+        y += h + 6
+    ax = cv.ax((x0, 403, x1, 408))
     clean(ax, False)
-    ax.set_xlim(-0.4, 0.2), ax.set_xticks([-0.4, -0.2, 0, 0.2])
-    ax.set_xticklabels(["-0.4", "-0.2", "0", "0.2"])
+    ax.set_xlim(-0.4, 0.2), ax.set_xticks([-0.4, -0.2, 0, 0.2]), ax.set_xticklabels(["-0.4", "-0.2", "0", "0.2"])
     if labels:
         ax.set_xlabel("Time from move (s)")
+    return centers
 
 
 def choice_trace(ax, res, session, cluster, win=(-0.2, 0.05), sd=0.02, legend=False):
-    """Fig 4e panel: mean rate aligned to movement for contra and ipsi choices, with s.e.m. across trials, unsmoothed by the model."""
-    from steinmetz.rates import aligned_rates
+    """Fig 4e panel: mean rate aligned to movement for contra and ipsi choices, shaded by s.e.m. across trials."""
+    from steinmetz.rates import aligned_rates, smooth
 
     ax.set_xlim(*win)
-    ax.set_xticks([-0.2, -0.1, 0])
+    ax.set_xticks([-0.2, -0.1, 0]), ax.set_xticklabels(["-0.2", "-0.1", "0"])
     if session is None:
         ax.set_yticks([])
         no_data(ax)
         return
     b = res.base(session)
     st, clu = res.spikes(session)
+    top = 0
     for mask, color in ((b["has_right"] & b["included"], CONTRA), (b["has_left"] & b["included"], IPSI)):
         if mask.sum() < 2:
             continue
-        r, t = aligned_rates(st, clu, np.array([cluster]), b["move_abs"][mask], win, sd)
+        r, t = aligned_rates(st, clu, np.array([cluster]), b["move_abs"][mask], (win[0] - 0.15, win[1]), sd)
         r = r[:, :, 0]
-        shade(ax, t, r.mean(0), r.std(0, ddof=1) / np.sqrt(len(r)), color)
+        m, e = smooth(r.mean(0), 0.03), smooth(r.std(0, ddof=1) / np.sqrt(len(r)), 0.03)
+        keep = t >= win[0]
+        shade(ax, t[keep], m[keep], e[keep], color, lw=1.1, alpha=0.32)
+        top = max(top, (m + e)[keep].max())
     ax.axvline(0, color="k", lw=0.6, ls=(0, (3, 2)))
-    ax.set_ylim(bottom=0)
+    limit = nice_top(top)
+    ax.set_ylim(0, limit), ax.set_yticks([0, limit]), ax.set_yticklabels(["0", f"{limit:g}"])
 
 
 def region_heat(cv, res, key, box_heat, box_bars, zkey, matched, regions=LATENCY_ORDER, xmax=0.3, labels=False, tick_kw=None):
     """One column of Fig 2d-h: normalized rate per region and % of neurons with |z| > 4."""
     from steinmetz.config import SIGNIFICANT_Z
 
-    x, r = res.normalized(key, matched_only=matched)
+    x, r = res.normalized(key, "high", matched_only=matched)
     use = (PSTH_T >= 0) & (PSTH_T <= xmax)
     heat = np.full((len(regions), use.sum()), np.nan)
     for i, name in enumerate(regions):
         if (r == name).any():
             heat[i] = np.nanmean(x[r == name][:, use], 0)
     a = cv.ax(box_heat)
-    a.imshow(heat, aspect="auto", cmap="gray_r", vmin=0.7, vmax=4, extent=(0, xmax, len(regions), 0), interpolation="nearest")
+    a.imshow(np.nan_to_num(heat), aspect="auto", cmap="gray_r", vmin=0.7, vmax=4, extent=(0, xmax, len(regions), 0), interpolation="bilinear")
     a.axvline(0, color="k", lw=0.6, ls=(0, (3, 2)))
     for v in (0.1, 0.2):
         a.axvline(v, color="#bbbbbb", lw=0.5)
+    for y in range(2, len(regions), 2):
+        a.axhline(y, color="#dddddd", lw=0.35)
     a.set_yticks([])
     a.set_xticks([0, 0.1, 0.2]), a.set_xticklabels(["0", "0.1", "0.2"])
     clean(a, False)
@@ -143,12 +162,17 @@ def region_heat(cv, res, key, box_heat, box_bars, zkey, matched, regions=LATENCY
     return a
 
 
-def region_name_columns(cv, x_left, x_right, y0, y1, order=LATENCY_ORDER, fontsize=6.3):
-    """Alternating two columns of colored region names, as in Fig 2d and Fig 5b."""
+def region_name_columns(cv, x_left, x_right, y0, y1, order=LATENCY_ORDER, fontsize=6.3, axis_x=None):
+    """Alternating two columns of colored region names, with a tick line out to the axis, as in Fig 2d and Fig 5b."""
+    from matplotlib.lines import Line2D
+
     step = (y1 - y0) / len(order)
     for i, name in enumerate(order):
         x = x_right if i % 2 == 0 else x_left
-        cv.text(x, y0 + (i + 0.5) * step, name, color=REGION_COLORS[name], fontweight="bold", fontsize=fontsize, ha="right")
+        y = y0 + (i + 0.5) * step
+        cv.text(x, y, name, color=REGION_COLORS[name], fontweight="bold", fontsize=fontsize, ha="right")
+        if axis_x is not None:
+            cv.fig.add_artist(Line2D([(x + 1.5) / cv.w, axis_x / cv.w], [1 - y / cv.h] * 2, color="#555555", lw=0.35))
 
 
 def region_bars(ax, table, column, order=ANATOMY_ORDER, ymax=None, min_n=5):
@@ -172,13 +196,21 @@ def region_bars(ax, table, column, order=ANATOMY_ORDER, ymax=None, min_n=5):
 
 
 def brain_maps(cv, box_top, box_sag, colors):
-    """Top-down and sagittal region maps. colors maps a region name to RGBA."""
+    """Top-down and sagittal region maps. colors maps a region name to RGBA. Other tissue is outlined in grey. Returns both axes."""
+    axes = []
     for box, name in ((box_top, "top"), (box_sag, "sagittal")):
         a = cv.ax(box)
+        axes.append(a)
         v = atlas.view(name)
         a.imshow(atlas.colored(v, colors), aspect="equal", interpolation="nearest")
-        a.contour(atlas.outlines(v), levels=[0.5], colors="k", linewidths=0.15)
+        tissue_edges = atlas.outlines(atlas.tissue(name)) & (v < 0)
+        a.contour(tissue_edges, levels=[0.5], colors="#b5b5b5", linewidths=0.14)
+        a.contour(v > -2, levels=[0.5], colors="#8f8f8f", linewidths=0.35)
+        a.contour(atlas.outlines(v) & (v >= -1), levels=[0.5], colors="#222222", linewidths=0.14)
         a.set_axis_off()
+        if name == "top":
+            a.set_xlim(-2, 314)  # the left hemisphere and a little past the midline, as in the paper
+    return axes
 
 
 def trial_means(res, s, trace, trials_mask, event, win=(-0.05, 0.2)):

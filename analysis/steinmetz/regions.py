@@ -58,6 +58,19 @@ def kept_regions(per_session, subjects, min_subjects):
     return {s: {r for r, n in c.items() if r in good and n >= MIN_NEURONS_REGION} for s, c in per_session.items()}
 
 
+@lru_cache(maxsize=1)
+def coarse_ids():
+    """Structure id -> id of its ancestor seven levels below the root, so layers merge when drawing outlines."""
+    root = json.loads((ATLAS_DIR / "structure_graph.json").read_text())["msg"][0]
+    out, stack = {}, [(root, 0, root["id"])]
+    while stack:
+        node, depth, top = stack.pop()
+        top = node["id"] if depth <= 7 else top
+        out[node["id"]] = top
+        stack.extend((c, depth + 1, top) for c in node["children"])
+    return out
+
+
 def atlas_labels(session, volume, id_table):
     """Paper region per channel when read from the atlas at the channel's CCF position (the bounded label check)."""
     xyz = np.round(session.channel_ccf() / 25).astype(int)

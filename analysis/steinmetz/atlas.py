@@ -4,7 +4,7 @@ from functools import lru_cache
 import numpy as np
 
 from .config import ANATOMY_ORDER, ATLAS_DIR
-from .regions import structure_tree, to_paper_region
+from .regions import coarse_ids, structure_tree, to_paper_region
 
 MIDLINE_UM = 5700
 SAGITTAL_ML_MM = 1.7
@@ -28,16 +28,28 @@ def _to_region_index(ids):
 
 
 @lru_cache(maxsize=2)
-def view(name):
-    """Region index image: 'top' (AP x LR, surface structure) or 'sagittal' (DV x AP at 1.7 mm ML, left hemisphere)."""
+def _ids(name):
     v = volume()
     if name == "top":
-        half = v[:, :, : v.shape[2] // 2 + 1]
-        first = (half != 0).argmax(1)
-        ids = np.take_along_axis(half, first[:, None, :], axis=1)[:, 0, :]
-        return _to_region_index(ids)
+        first = (v != 0).argmax(1)
+        return np.take_along_axis(v, first[:, None, :], axis=1)[:, 0, :]
     lr = int(round((MIDLINE_UM - SAGITTAL_ML_MM * 1000) / RES_UM))
-    return _to_region_index(v[:, :, lr].T)
+    return v[:, :, lr].T
+
+
+@lru_cache(maxsize=2)
+def view(name):
+    """Region index image: 'top' (AP x LR, surface structure) or 'sagittal' (DV x AP at 1.7 mm ML, left hemisphere)."""
+    return _to_region_index(_ids(name))
+
+
+@lru_cache(maxsize=2)
+def tissue(name):
+    """All structures at a coarse level, for the grey outlines of tissue outside the recorded regions."""
+    ids = _ids(name)
+    u, inv = np.unique(ids, return_inverse=True)
+    table = coarse_ids()
+    return np.array([table.get(int(i), int(i)) for i in u])[inv].reshape(ids.shape)
 
 
 def colored(index_image, colors, other=(1.0, 1.0, 1.0, 1.0)):

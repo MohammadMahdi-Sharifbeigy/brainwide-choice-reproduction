@@ -10,6 +10,12 @@ analysis/output_notebook/
 # Local project instructions
 CLAUDE.md
 
+# LaTeX build files
+report/*.aux
+report/*.log
+report/*.out
+report/*.toc
+
 # Python and notebook byproducts
 __pycache__/
 *.pyc

@@ -434,3 +434,13 @@ analysis/
 
 Module structure, solver implementation (reuse of a precomputed Gram matrix per session and fold is expected), parallelism details,
 synthetic data design, test organization, exact fonts available on Windows.
+
+## 13. Changes after the full run
+
+Made on 2026-11-02 after comparing the 39-session figures panel by panel with the paper. None of these rerun the analysis.
+
+- `run_all.py` rebuilds figures by default. The analysis runs only with `--analyze`.
+- Neuron sets for display: Fig 2d-h and Ext 4b-e now use the highly activated set of the Methods. Section 8.2 had them on the responsive set, and the heatmaps were far too pale.
+- Examples are now the real neurons closest to curves digitized from the paper's panels, and they must pass the kernel test their panel implies (`select_examples.py`). This replaces the rules of Section 7 for rasters, which now also require 15 correct trials per side. Fig 4e assignment neurons are still ranked by Choice variance explained, among neurons firing at 8 sp/s or more.
+- Ext 1 uses non-repeat trials, found by matching the paper's per-subject trial counts.
+- Panels with no data behind them are tagged crops of the paper's figures, replacing the empty slots of Section 12. Colors are measured from the paper's high-resolution figures (`steinmetz/paper_palette.json`).

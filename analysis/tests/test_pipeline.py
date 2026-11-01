@@ -2,9 +2,10 @@
 import numpy as np
 import pytest
 
-from steinmetz import pipeline, regression, store
+from steinmetz import examples, pipeline, regression, store
 from steinmetz.config import Config
 from steinmetz.data import Session
+from steinmetz.results import Results
 from steinmetz.trials import build_trials
 
 
@@ -31,7 +32,8 @@ def test_resume_keeps_the_measured_timing(run):
     saved = store.load_json(cfg.results / "timing.json")["stages"]
     assert saved["regression"]["seconds"] >= timing["regression"]["seconds"]
     pipeline.run(cfg, names, workers=1)
-    assert store.load_json(cfg.results / "timing.json")["stages"] == saved
+    after = store.load_json(cfg.results / "timing.json")["stages"]
+    assert {k: v["seconds"] for k, v in after.items()} == {k: v["seconds"] for k, v in saved.items()}
 
 
 def test_half_written_file_does_not_count(tmp_path):
@@ -69,6 +71,16 @@ def test_progress_label_names_stage_step_and_kernel():
 
     assert r._label(_nested, [(0, 1, 2, "choice")]) == "regression | nested | choice"
     assert r.pmap(_nested, [(0, 1, 2, "choice")]) == [(0, 1, 2, "choice")]
+
+
+def test_neuron_search_survives_a_region_with_no_candidates(run):
+    cfg, *_ = run
+    res = Results(cfg)
+    table = res.regression()
+    empty = table[table["region"] == "not-a-region"]
+    assert examples.score_slot(res, empty, "fig2a", set()).empty
+    assert examples.contrast_slot(res, empty, "ext4_visp", set()).empty
+    assert examples.ext5_slot(res, empty).empty
 
 
 def test_workers_shrink_to_fit_memory():

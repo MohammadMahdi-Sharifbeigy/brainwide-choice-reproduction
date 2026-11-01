@@ -1,8 +1,9 @@
-"""Run the whole analysis, then make all figures and the report.
+"""Rebuild all figures and the report from saved results. The analysis only runs when asked for.
 
-    env\\Scripts\\python.exe analysis\\run_all.py                     full dataset
-    env\\Scripts\\python.exe analysis\\run_all.py --session NAME      one session (smoke run)
-    env\\Scripts\\python.exe analysis\\run_all.py --figures-only      rebuild figures from saved results
+    env\\Scripts\\python.exe analysis\\run_all.py                                 figures and report only
+    env\\Scripts\\python.exe analysis\\run_all.py --only fig4 ext7                just these figures
+    env\\Scripts\\python.exe analysis\\run_all.py --analyze                       run missing analysis stages, then figures
+    env\\Scripts\\python.exe analysis\\run_all.py --analyze --session NAME        one session (smoke run)
 """
 import argparse
 import os
@@ -34,23 +35,29 @@ def expected_peak(cfg):
     return pipeline.scaled_peak(peak, max(size(s) for s in done), max(size(s) for s in list_sessions(cfg.data)))
 
 
-def main():
+def parse(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--session", help="run one session only, for a smoke run")
+    ap.add_argument("--analyze", action="store_true", help="run analysis stages first; finished stages are skipped")
+    ap.add_argument("--session", help="use one session's results (results_smoke), for a smoke run")
     ap.add_argument("--workers", type=int, help="override the automatic worker count")
-    ap.add_argument("--figures-only", action="store_true")
-    args = ap.parse_args()
+    ap.add_argument("--only", nargs="+", help="make only these figures, for example fig4 ext7 assignment report")
+    return ap.parse_args(argv)
 
+
+def main():
+    args = parse()
     cfg = Config()
     sessions = None
     if args.session:
         cfg = replace(cfg, results=ANALYSIS / "results_smoke", output=ANALYSIS / "output_smoke", min_subjects=1)
         sessions = [args.session]
-    if not args.figures_only:
+    if args.analyze:
         workers = args.workers or pipeline.auto_workers(expected_peak(cfg))
         print(f"workers: {workers}", flush=True)
         pipeline.run(cfg, sessions, workers)
-    failed = make_all(cfg)
+    elif not (cfg.results / "regions.json").exists():
+        sys.exit(f"no saved results in {cfg.results}; run once with --analyze")
+    failed = make_all(cfg, set(args.only) if args.only else None)
     if failed:
         print(f"figures that failed: {sorted(failed)}")
         sys.exit(1)

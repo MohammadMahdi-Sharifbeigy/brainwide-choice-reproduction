@@ -1,5 +1,6 @@
 """Paper styling: region colors, panels placed in the paper's pixel coordinates, watermark, layout overlays."""
-import colorsys
+import json
+from pathlib import Path
 
 import matplotlib
 
@@ -9,7 +10,7 @@ import numpy as np
 from matplotlib.colors import LinearSegmentedColormap
 from PIL import Image
 
-from .config import PAPER_FIGS
+from .config import ANALYSIS, PAPER_FIGS
 
 plt.rcParams.update({
     "font.family": ["Arial", "DejaVu Sans"], "font.size": 6.5, "axes.linewidth": 0.6, "xtick.major.width": 0.6, "ytick.major.width": 0.6,
@@ -17,32 +18,42 @@ plt.rcParams.update({
     "legend.frameon": False, "axes.spines.top": False, "axes.spines.right": False,
 })
 
-CONTRA, IPSI = "#f08a24", "#3f7cc4"
+PALETTE = json.loads((Path(__file__).parent / "paper_palette.json").read_text())  # measured from the paper's figures
+HIRES = ANALYSIS / "resources" / "paper"
+_line = {k: tuple(v) for k, v in PALETTE["lines"].items()}
+
+CONTRA, IPSI, MISS, GO = _line["contra"], _line["ipsi"], _line["miss"], _line["go"]
 STIM_CONTRA, STIM_IPSI = "#8c4a1c", "#1f4e8c"
-MISS, PASSIVE, GO = "#29abe2", "#8a8a8a", "#e8562a"
-RASTER_BG = "#ebecee"
-ENGAGE = LinearSegmentedColormap.from_list("eng", ["#3b56a5", "#e8e6f2", "#f4cdbd", "#c21f26"])
+PASSIVE = "#8a8a8a"
+MISS_CONTRA_RASTER = _line["miss_contra_raster"]
+RASTER_BG = _line["raster_bg"]
+BAR_RED = _line["bar_red"]
+HIST_BLUE, HIST_ORANGE = _line["hist_blue"], _line["hist_orange"]
+ENGAGE = LinearSegmentedColormap.from_list("eng", PALETTE["cmaps"]["engage"])
+JPECC_CMAP = LinearSegmentedColormap.from_list("jp", PALETTE["cmaps"]["jpecc"])
+CHOICE_CMAP = LinearSegmentedColormap.from_list("choice", PALETTE["cmaps"]["choice"])
+PURPLE_HEAT = LinearSegmentedColormap.from_list("pur", PALETTE["cmaps"]["purple"])
 BLUE_WHITE_RED = LinearSegmentedColormap.from_list("bwr2", ["#3b56a5", "#ffffff", "#e51a23"])
-JPECC_CMAP = LinearSegmentedColormap.from_list("jp", ["#29abe2", "#1a3a70", "#000000", "#c7141a", "#f68b1f", "#fff200"])
-PURPLE_HEAT = LinearSegmentedColormap.from_list("pur", ["#ffffff", "#7b64b0", "#2a1a58", "#000000"])
+PARULA = LinearSegmentedColormap.from_list("parula", ["#352a87", "#0f5cdd", "#1481d6", "#06a4ca", "#2eb7a4", "#87bf77", "#d1bb59", "#fec832", "#f9fb0e"])
+REGION_COLORS = {k: tuple(v) for k, v in PALETTE["regions"].items()}
+GROUP_COLORS = {"Visual cortex": REGION_COLORS["VISam"], "Frontal/somatomotor cortex": REGION_COLORS["SSp"], "Hippocampus": REGION_COLORS["CA1"], "Basal ganglia": REGION_COLORS["ACB"],
+                "Thalamus": REGION_COLORS["PO"], "Midbrain": REGION_COLORS["APN"]}
 
 
-def _ramp(hue, names, sat=(0.75, 0.42), val=(0.25, 0.97)):
-    n = len(names)
-    return {r: colorsys.hsv_to_rgb(hue, sat[0] + (sat[1] - sat[0]) * i / max(n - 1, 1), val[0] + (val[1] - val[0]) * i / max(n - 1, 1))
-            for i, r in enumerate(names)}
+def nice_top(value):
+    """The next round axis limit above value: 1, 2, 4, 5, 6 or 8 times a power of ten."""
+    if not np.isfinite(value) or value <= 0:
+        return 1.0
+    base = 10 ** np.floor(np.log10(value))
+    return float(next(m for m in (1, 2, 4, 5, 6, 8, 10) if m * base >= value * 0.999) * base)
 
 
-# hues from the authors' 'gradient' region groups; the ramp stands in for their myCopper, which is not in the repository
-REGION_COLORS = {
-    **_ramp(0.1, ("ACA", "MOs", "PL", "ILA", "ORB", "MOp", "SSp")),
-    **_ramp(0.72, ("CP", "GPe", "SNr", "ACB", "LS")),
-    **_ramp(0.0, ("SCs", "SCm", "MRN", "APN", "PAG")),
-    **_ramp(0.6, ("VISp", "VISl", "VISpm", "VISam", "VISrl", "VISa")),
-    **_ramp(0.3, ("LGd", "LP", "LD", "POL", "MD", "VPL", "PO", "VPM", "RT", "MG")),
-    **_ramp(0.89, ("DG", "CA3", "CA1", "SUB", "POST")),
-    "RSP": (0, 0, 0), "ZI": (0.25, 0.25, 0.25), "OLF": (0.5, 0.5, 0.5), "BLA": (0.75, 0.75, 0.75),
-}
+def _write(save, path):
+    """Save, or say which file is locked: Windows refuses to overwrite a file open in a viewer, and that must not stop a build."""
+    try:
+        save(path)
+    except OSError:
+        print(f"could not write {path.name}: close it in any viewer and rebuild")
 
 
 class Canvas:
@@ -52,6 +63,7 @@ class Canvas:
 
     def __init__(self, cfg, name, paper_png=None, scale=1.0, overlay=True, height=None):
         self.cfg, self.name, self.paper, self.scale, self.overlay = cfg, name, paper_png, scale, overlay
+        self.key = (paper_png or "").replace(".png", "").replace("extended-data-fig", "ext")
         self.w, self.h = Image.open(PAPER_FIGS / paper_png).size if paper_png else (812, 620)
         self.h = height or self.h
         plt.rcParams["font.size"] = 6.5 * scale
@@ -73,12 +85,20 @@ class Canvas:
         self.text(x, y, s, fontweight="bold", fontsize=8, ha="left")
 
     def slot(self, box, label):
-        """Labelled empty panel where the paper shows a photo, histology or a cartoon."""
+        """A panel that has no data behind it (photo, histology, cartoon): the paper's own panel, tagged as such."""
+        if not self.paper or not (HIRES / f"{self.key}.png").exists():
+            a = self.ax(box)
+            a.set_xticks([]), a.set_yticks([])
+            a.text(0.5, 0.5, label, transform=a.transAxes, ha="center", va="center", color="#999999", fontsize=5.5)
+            return a
+        m = PALETTE["maps"][self.key]
+        to_hi = lambda v, o: int(round((v + o) * m["scale"]))
+        crop = Image.open(HIRES / f"{self.key}.png").convert("RGB").crop((to_hi(box[0], m["ox"]), to_hi(box[1], m["oy"]), to_hi(box[2], m["ox"]), to_hi(box[3], m["oy"])))
         a = self.ax(box)
-        a.set_xticks([]), a.set_yticks([])
-        for sp in a.spines.values():
-            sp.set_visible(True), sp.set_color("#bbbbbb"), sp.set_linestyle(":")
-        a.text(0.5, 0.5, label, transform=a.transAxes, ha="center", va="center", color="#999999", fontsize=5.5, wrap=True)
+        a.imshow(np.asarray(crop), aspect="auto", interpolation="antialiased")
+        a.set_axis_off()
+        a.text(0.995, 0.004, "from the paper", transform=a.transAxes, ha="right", va="bottom", color="#777777", fontsize=3.6, style="italic",
+               bbox=dict(fc="white", ec="none", pad=0.4, alpha=0.8))
         return a
 
     def finish(self, subdir="figures"):
@@ -87,8 +107,8 @@ class Canvas:
         out = self.cfg.output / subdir
         out.mkdir(parents=True, exist_ok=True)
         path = out / f"{self.name}.png"
-        self.fig.savefig(path, dpi=300)
-        self.fig.savefig(out / f"{self.name}.pdf")
+        _write(lambda p: self.fig.savefig(p, dpi=300), path)
+        _write(self.fig.savefig, out / f"{self.name}.pdf")
         plt.close(self.fig)
         if self.paper and self.overlay:
             self._overlay(path)
@@ -101,7 +121,7 @@ class Canvas:
         paper = Image.open(PAPER_FIGS / self.paper).convert("RGB").crop((0, 0, self.w, self.h))
         paper = paper.resize((paper.width * 2, paper.height * 2), Image.LANCZOS)
         ours = Image.open(path).convert("RGB").resize(paper.size, Image.LANCZOS)
-        Image.blend(paper, ours, 0.55).save(out / f"{self.name}.png")
+        _write(Image.blend(paper, ours, 0.55).save, out / f"{self.name}.png")
 
 
 def clean(ax, left=True, bottom=True):

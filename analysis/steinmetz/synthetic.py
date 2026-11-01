@@ -131,6 +131,7 @@ def write_session(folder, seed, n_trials=240, per_region=15):
     save("clusters.templateWaveformChans", np.tile(np.arange(8.0), (n, 1)))
     save("spikes.times", st[:, None])
     save("spikes.clusters", sc.astype(np.int32)[:, None])
+    save("spikes.depths", (sc * 20.0)[:, None])
 
     save("trials.visualStim_times", tk["stim"][:, None])
     save("trials.goCue_times", tk["cue"][:, None])

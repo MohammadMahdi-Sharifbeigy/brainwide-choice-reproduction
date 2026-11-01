@@ -1,0 +1,207 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{fontspec}
+\setmainfont{Times New Roman}
+\setsansfont{Arial}
+\setmonofont[Scale=0.85]{Consolas}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{pdflscape}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\captionsetup{font=small,labelfont=bf}
+\setlist[itemize]{itemsep=2pt,topsep=4pt}
+\setlength{\parskip}{5pt}
+\setlength{\parindent}{0pt}
+\graphicspath{{figures/}}
+
+% one landscape page: the paper's figure beside ours
+\newcommand{\comparison}[2]{%
+  \begin{landscape}
+  \section*{#2}
+  \addcontentsline{toc}{subsection}{#2}
+  \vspace{-3mm}
+  \begin{minipage}[t]{0.495\linewidth}\centering
+    {\small\textbf{Original}}\\[1mm]
+    \includegraphics[width=\linewidth,height=0.83\textheight,keepaspectratio]{paper_#1.jpg}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.495\linewidth}\centering
+    {\small\textbf{Reproduced from the full 39-session run}}\\[1mm]
+    \includegraphics[width=\linewidth,height=0.83\textheight,keepaspectratio]{ours_#1.png}
+  \end{minipage}
+  \end{landscape}
+}
+
+\title{\textbf{Distributed coding of choice, action and engagement across the mouse brain}\\[2mm]\large A figure-by-figure reproduction, with responses in VISp, LGd and LP}
+\author{MohammadMahdi}
+\date{November 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This report reproduces the analyses of a brain-wide Neuropixels study of visual decisions in mice [1], from its public dataset [2], and redoes four of its plots for primary visual cortex (VISp) and two visual thalamic nuclei (LGd and LP). All 39 sessions were analysed: 9,538 trials and 29,178 neurons, of which 22,210 were assigned to the study's 42 regions. Each figure was then compared with the original panel by panel. The main results hold: action coding is global, visual coding follows a restricted pathway, choice coding is rare and localized, midbrain neurons prefer contralateral choices, and pre-stimulus engagement signals have opposite signs in neocortex and in subcortical regions. In VISp, LGd and LP, activity before the stimulus is lower in the task than in passive replay, and these regions carry visual and movement signals but very little choice coding. Some numbers differ from the paper, and those differences are listed.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\section{Summary of the comparison}
+
+Every panel group of Figures 1 to 5 and Extended Data Figures 1 to 9 was placed beside the original and rated. \textbf{Same} means the result cannot be told apart at reading accuracy. \textbf{Close} means the same pattern and conclusion, with small differences in values. \textbf{Partial} means the main conclusion holds but a difference is visible. \textbf{From the paper} marks a photo, histology image or cartoon with no data behind it: these are crops of the original figure, tagged ``from the paper'' in the figure itself.
+
+\begin{table}[H]\centering\small
+\input{generated/summary.tex}
+\caption{Agreement with the paper by figure. Ratings are by eye, supported by the numbers in Section~\ref{sec:numbers}.}
+\end{table}
+
+The ratings for the example neurons need care. Those neurons were chosen to resemble the paper's panels (Section~\ref{sec:neurons}), so their close match shows that such neurons exist in the data. It is not independent evidence for the paper's claims. The evidence is in the population panels, where nothing was selected.
+
+The five largest differences from the paper are these:
+\begin{enumerate}[itemsep=2pt]
+\item \textbf{Fig 4c:} the time-by-group interaction is absent as in the paper (p = 1.0), but the group main effect is significant here (p = 7e-4). The paper reports none. So the conclusion that choice signals have the same timing across regions holds, while the claim of no group difference does not fully reproduce.
+\item \textbf{Choice-selective neurons are fewer:} 79 in the midbrain and forebrain sets against the paper's 102, although the proportions preferring each side are close.
+\item \textbf{Suppression of the non-preferred choice:} 16 of 46 midbrain neurons against 29 of 54. This is the largest proportional gap in the single-neuron results.
+\item \textbf{Extended Data Table 1:} 23 of the 42 regions differ by more than 2\%, because the released region labels differ from those behind the paper's table.
+\item \textbf{Fig 5d and Ext 7f:} the correlations are stronger than the paper's (r = 0.58 against 0.46, and 0.79 against 0.69).
+\end{enumerate}
+
+\section{Data and methods}
+
+\subsection{Dataset}
+The data are 39 sessions from 10 mice, recorded with Neuropixels probes in the left hemisphere [2]. On each trial, gratings of varying contrast could appear on the left, the right, both or neither, and mice turned a wheel to bring the higher-contrast grating to the center, or held still if there was none. Because all recordings are from the left hemisphere, \emph{contra} means the right stimulus and the Right choice. The sign conventions were checked against rewards in the data.
+
+\subsection{Analysis}
+The analysis was implemented in Python following the Methods of [1] and the authors' code [3].
+
+\textbf{Trials.} Left and Right trials have a first movement of that kind 125 to 400 ms after the stimulus. For the regression, the authors' published trial lists were reproduced with no differences on all 39 sessions. For Fig 2d, f, h, Fig 5a, b and Ext 6b, trials were matched for contralateral contrast across correct contra, Miss and passive trials. This keeps 34 sessions, as in the paper.
+
+\textbf{Neurons.} A neuron is a unit labelled good that fires at 0.1 sp/s or more from stimulus onset to 400 ms. Regions come from the Allen label at each neuron's peak channel, merged to the paper's 42 regions through the Allen hierarchy [4]. A region needs at least 13 neurons in a session and at least 2 mice.
+
+\textbf{Firing rates.} Spikes were binned at 5 ms and smoothed with a causal half-Gaussian. For display, rates are smoothed with 20 ms, averaged over trials, and smoothed with 30 ms. Normalized rates are
+\begin{equation}
+r_{\text{norm}}(t) = \frac{r(t) - r_{\text{base}}}{r_{\text{base}} + 0.5}.
+\end{equation}
+
+\textbf{Kernel regression.} Each neuron's rate is modelled as a sum of kernels locked to stimuli and movements,
+\begin{equation}
+\hat f_n(t) = \sum_c \sum_{s \in S_c} K_{c,n}(t - s) + \sum_{m \in M} \big[ K_{m,n}(t - m) + D_m K_{D,n}(t - m) \big],
+\end{equation}
+with six Vision kernels, one Action kernel and one Choice kernel, giving 650 predictors. $D_m$ is +1 for Left (ipsi) and $-1$ for Right (contra), so a negative pre-movement Choice kernel means contra preference. A reduced-rank basis pooled over all sessions was fit with elastic net, copying the scaling of the software used in [1] and [5]: at $\alpha = 0.5$ the penalty is $\lambda_s = 0.5 / y_s$ for a neuron with rate s.d. $y_s$. A nested test measures what each kernel adds in cross-validation, with 2\% as the threshold.
+
+\textbf{Other analyses.} Population decoding used L1 logistic regression on residuals. jPECC used 10 PCs and ridge CCA at each pair of times. Choice and detect probability combined Mann-Whitney statistics across the 16 stimulus conditions, with 2,000 shuffles. Engagement used a nested ANOVA on log rates from $-250$ to $-50$ ms, and an index from the task-passive rate difference from $-200$ to 0 ms.
+
+\subsection{Figures}
+The figures rebuild from saved results, with no new analysis. Colors were measured from the high-resolution figures embedded in the paper's PDF: region colors, line colors and all colormaps. Panels were placed at the pixel positions of the original.
+
+Three plotting problems found during the comparison were corrected, and each changed a panel's appearance substantially:
+\begin{itemize}
+\item \textbf{Fig 2d-h and Ext 4b-e:} these now use the ``highly activated'' neurons of the Methods' section on visualizing firing rates. On all responsive neurons, the heatmaps were far too pale.
+\item \textbf{Fig 4d and Ext 8:} the jPECC colormap had its black at $-0.1$, not 0, which turned zero correlation red.
+\item \textbf{Ext 5c:} the legend reads L+R and L$-$R, so the plotted lines are twice each kernel.
+\end{itemize}
+Ext 1 was also found to use non-repeat trials. Using \texttt{repNum = 1} gives the paper's trial count exactly for 9 of 10 subjects.
+
+\section{Assignment figures: VISp, LGd and LP}
+\label{sec:assignment}
+
+These figures redo Fig 2a-c, Fig 4e, Fig 5a and Ext 6b for the three regions, in the paper's style.
+
+\begin{table}[H]\centering\footnotesize
+\input{generated/assignment.tex}
+\caption{The three regions in the full run. Vision, Action and Choice count neurons passing the 2\% nested test. T$-$P is the pre-stimulus rate difference, task minus passive, and G$-$M is Go minus Miss, both in sp/s.}
+\end{table}
+
+\subsection{Fig 2a-c style: single-neuron rasters}
+\begin{figure}[H]\centering
+\includegraphics[width=0.92\linewidth]{assignment_fig2abc_rasters.png}
+\caption{One neuron per region, on trials with a stimulus on one side only. Top six rows are aligned to the stimulus, with black dots marking movement. Bottom two rows are aligned to movement, with black dots marking the stimulus.}
+\end{figure}
+The VISp neuron fires a burst about 70 ms after a contralateral stimulus on correct, Miss and passive trials, and not after ipsilateral stimuli. The response is present with no movement at all, so it is visual. The LP neuron shows the same pattern. The LGd neuron is different: it fires at a high rate throughout, with little locked to the stimulus. This fits the paper's report that recorded LGd neurons had receptive fields away from the task stimuli [1].
+
+\subsection{Fig 4e style: firing aligned to movement}
+\begin{figure}[H]\centering
+\includegraphics[width=0.9\linewidth]{assignment_fig4e_choice.png}
+\caption{Rates aligned to movement, for contralateral (orange) and ipsilateral (blue) choices. Neurons have the highest nested Choice variance explained among those firing at 8 sp/s or more, in sessions with at least 15 trials per side.}
+\end{figure}
+Only one of the six neurons passes the 2\% Choice threshold: the VISp neuron in the bottom row, which is the single neuron of 708 in VISp to do so. No LGd or LP neuron passes. This agrees with the paper, which found no choice coding in VISp [1], and one neuron of the 259 tested (0.4\%) is no more than the 0.5\% false-positive rate of the shuffle test. Separated curves are therefore not evidence of choice coding here. Contra choices mostly follow contra stimuli, so a visual response alone can separate the two curves. The same caution applies to the VISp neuron in the paper's Fig 4a.
+
+\subsection{Fig 5a style: Miss against Passive}
+\begin{figure}[H]\centering
+\includegraphics[width=0.9\linewidth]{assignment_fig5a_miss_passive.png}
+\caption{Population average rate on Miss and passive trials with matched contralateral contrast. Shading is s.e.m. across neurons.}
+\end{figure}
+All three regions fire less before the stimulus in the task than in passive replay, by 0.68 sp/s in VISp, 1.67 in LGd and 1.29 in LP. The nested ANOVA finds this significant in all three. The paper reports the same direction for neocortex and visual thalamus [1]. VISp also shows the visual response after the stimulus, with a similar shape in the two conditions.
+
+\subsection{Ext 6b style: Go, Miss and Passive}
+\begin{figure}[H]\centering
+\includegraphics[width=0.9\linewidth]{assignment_ext6b_go_miss_passive.png}
+\caption{Population average rate on Go, Miss and passive trials with matched contralateral contrast.}
+\end{figure}
+Before the stimulus, the order is Passive above Miss and Go in all three regions, which is the pattern the paper describes for these regions [1]. Go and Miss are close before the stimulus in VISp, and Go is a little below Miss in LGd and LP. After about 150 ms the Go trace rises, reflecting movement.
+
+\subsection{Neurons shown}
+\begin{table}[H]\centering\footnotesize
+\input{generated/assignment_neurons.tex}
+\caption{Neurons in the assignment figures. Raster neurons have the most reliable contralateral stimulus response in a session with at least 15 correct trials per side.}
+\end{table}
+
+\section{Example neurons}
+\label{sec:neurons}
+
+The paper does not identify its example neurons. To get as close as the data allow, the curves in each example panel were digitized from the paper's high-resolution figures, and every neuron in that region was scored against them in sp/s. Candidates had to pass the test their panel implies: a neuron shown as choice-selective must pass the nested Choice test, and a neuron shown with no visual response must not pass the Vision test. For Fig 2, row heights also count, because they follow each session's trial counts.
+
+\textbf{Curve error} is the root-mean-square difference from the paper's curves, as a percentage of the panel's peak. The chosen neurons are close matches, and they need not be the same cells. One result stands out: for the VISpm neuron of Fig 2b, curves and row heights separately pointed to \texttt{Cori\_2016-12-17}, so that may be the paper's own session.
+
+\input{generated/neurons.tex}
+
+The top five candidates for each panel are in \texttt{analysis/results/example\_scores.csv}.
+
+\section{Comparison with the paper's numbers}
+\label{sec:numbers}
+
+\input{generated/numbers.tex}
+
+Exact equality is not expected for results that depend on random splits, or on a different solver from the original.
+
+\begin{table}[H]\centering\scriptsize
+\input{generated/table1.tex}
+\caption{Neurons per region against Extended Data Table 1. The total is within 2\%, but the released labels do not reproduce the table region by region. Re-deriving labels from the atlas at each channel's position was much worse (total error of 8,505 neurons against 790), so the released labels were kept.}
+\end{table}
+
+\section{Known differences from the paper}
+
+\input{generated/departures.tex}
+
+\section{Figure-by-figure comparison}
+\label{sec:figures}
+
+Each page shows the paper's figure beside ours, followed by a table for every panel. Ratings are defined in Section 1.
+
+\input{generated/comparisons.tex}
+
+\newpage
+\section{Reproducing this report}
+
+Figures and this report rebuild from saved results, with no new analysis. From the \texttt{Task} folder:
+\begin{verbatim}
+env/Scripts/python.exe analysis/run_all.py
+env/Scripts/python.exe report/make_report.py
+\end{verbatim}
+The analysis itself runs only with \texttt{run\_all.py --analyze}.
+
+\section*{References}
+\addcontentsline{toc}{section}{References}
+\begin{enumerate}[label={[\arabic*]},leftmargin=*]
+\item Distributed coding of choice, action and engagement across the mouse brain. \emph{Nature} 576, 266--273 (2019). doi:10.1038/s41586-019-1787-x.
+\item Dataset for [1]. figshare, doi:10.6084/m9.figshare.9598406.
+\item Analysis code for [1]. \url{https://github.com/nsteinme/steinmetz-et-al-2019}.
+\item Allen Mouse Brain Common Coordinate Framework, version 3 (2017).
+\item Glmnet for Matlab, version used in [1].
+\end{enumerate}
+
+\end{document}

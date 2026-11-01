@@ -90,7 +90,12 @@ DP: none
 ## Known departures
 
 - Elastic net solved at lambda directly; the authors interpolate along a glmnet path.
-- Example neurons are chosen by rule; the paper does not identify its examples.
+- Example neurons are the real neurons closest to the paper's panels; the paper does not identify its examples, so they need not be the same cells.
+- Fig 2d-h heatmaps and Ext 4b-e use the Methods' highly activated neurons (sliding rank-sum); the captions say responsive.
+- Ext 1 uses non-repeat trials (repNum 1), which reproduces the paper's trial counts for 9 of 10 subjects. Cori has 536 against 526.
+- Panels with no data behind them (photos, histology, cartoons) are crops of the paper's own figure, tagged in the figure.
+- jPECC averages use every session with both region groups: 17, 11 and 9 sessions against the paper's 10, 5 and 9. No neuron-count rule reproduced those numbers.
+- Fig 1j uses a session with six of the seven regions of the paper's panel.
 - Released region labels differ from the paper's table per region (table below).
 - Pupil panels use all 39 sessions; the paper's five rejected recordings are not named.
 - Fig 2d-h and Fig 5b use two-sided |z|>4 as in the Methods; captions read as one-sided. One-sided counts are below.
@@ -98,7 +103,7 @@ DP: none
 - Fig 4c normalizes by group, reading the Methods' 'area' as the three groups.
 - Decoding regularization and folds are not stated: L1 logistic regression, C from (0.01, 0.1, 1), 5 outer and 3 inner folds.
 - ccCP counts use a 100 ms box stepped by 10 ms; the time-course window is not stated.
-- Ext 4b latency is the peak on odd-numbered trials; its definition is not stated.
+- Ext 4b latency is when the odd-trial rate first reaches half its peak; its definition is not stated.
 - Ext 9e-f and 9k use within-session median splits; the paper gives labels only.
 - Fig 5c-d and Ext 7f use -0.2 to 0 s; their windows are not stated.
 - The 34 engagement sessions are taken as the contrast-matched sessions; the paper does not say which 34.
@@ -107,5 +112,6 @@ DP: none
 - DP applies the >=10 includable-trials rule itself, so it keeps more sessions than CP.
 - Ext 5f uses neurons passing the 2% full-model cut, matching the neuron counts implied by its histograms.
 - Ext 5g's color scale is set from the data, because the paper's projection units are not stated.
+- Ext 5c plots the sum and difference of the Left and Right responses, as the paper's legend labels them: twice each kernel.
 - Released region labels are kept: labels read from the atlas at channel positions were far further from Extended Data Table 1.
-- Region colors approximate the authors' myCopper ramp, which is not in their repository.
+- Region, line and colormap colors are measured from the paper's figures. BLA-style pale regions and the brain-map color steps are approximate.

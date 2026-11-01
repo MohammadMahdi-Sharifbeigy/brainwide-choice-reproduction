@@ -6,17 +6,21 @@ from steinmetz.style import GO, MISS, PASSIVE, REGION_COLORS, Canvas
 from .common import choice_trace, raster_column
 from .main_figs import _ex, rate_panel
 
-COLUMNS = ((122, 287), (359, 523), (604, 769))
+COLUMNS = ((122, 287), (359, 523), (604, 769))  # the paper's raster columns
 PANELS_3 = ((60, 280), (320, 540), (580, 800))
 
 
 def assignment_2(res, chosen):
     cv = Canvas(res.cfg, "assignment_fig2abc_rasters", "fig2.png", height=445)
+    centers = {}
     for i, (r, (x0, x1)) in enumerate(zip(ASSIGNMENT_REGIONS, COLUMNS)):
         s, c = _ex(chosen, f"assign_raster_{r}")
-        raster_column(cv, res, s, c, x0, x1, f"{r} neuron", REGION_COLORS[r], "abc"[i], labels=i == 0)
-    for t, y in (("Correct\nchoices", 90), ("Misses", 168), ("Passive", 238), ("Correct\nchoices", 365)):
-        cv.text(38, y, t, style="italic", fontsize=7)
+        got = raster_column(cv, res, s, c, x0, x1, f"{r} neuron", REGION_COLORS[r], "abc"[i], labels=i == 0)
+        centers = centers or got
+    if centers:
+        for t, k1, k2 in (("Correct\nchoices", "contra_correct", "ipsi_correct"), ("Misses", "contra_miss", "ipsi_miss"), ("Passive", "contra_passive", "ipsi_passive"),
+                          ("Correct\nchoices", "move_contra_correct", "move_ipsi_correct")):
+            cv.text(38, (centers[k1] + centers[k2]) / 2, t, style="italic", fontsize=7)
     return cv.finish("assignment")
 
 

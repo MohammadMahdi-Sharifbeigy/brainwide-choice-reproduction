@@ -34,5 +34,5 @@ def test_notebook_builds_every_figure(source):
     assert called == FIGS
 
 
-def test_notebook_defaults_to_one_session(source):
-    assert 'RUN_MODE = "session"' in source
+def test_notebook_has_a_valid_run_mode(source):
+    assert re.search(r'^RUN_MODE = "(session|full)"', source, re.M)

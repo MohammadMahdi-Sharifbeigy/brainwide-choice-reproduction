@@ -23,26 +23,41 @@ From the `Task` folder:
 env/Scripts/python.exe analysis/run_all.py
 ```
 
-The run skips finished work, so run the same command again after an interruption. The worker count is set from free RAM when it starts; close other programs first
+This rebuilds all figures and the report from saved results. To run the analysis, add `--analyze`. It skips finished work, so run the same command again after an interruption. The worker count is set from free RAM when it starts; close other programs first
 for a faster run, or set it with `--workers N`.
 
 Other commands:
 
 ```bash
-env/Scripts/python.exe analysis/run_all.py --session Richards_2017-10-31
+env/Scripts/python.exe analysis/run_all.py --analyze
 ```
 
 ```bash
-env/Scripts/python.exe analysis/run_all.py --figures-only
+env/Scripts/python.exe analysis/run_all.py --analyze --session Richards_2017-10-31
 ```
 
 ```bash
 env/Scripts/python.exe -m pytest analysis/tests -q
 ```
 
-The run shows progress bars for stages, sessions and figures.
+`run_all.py` rebuilds figures and the report from saved results and never reruns the analysis unless you pass `--analyze`. Use `--only fig4 ext7` to rebuild just those figures.
+With `--analyze` the run shows progress bars for stages and sessions, and resumes after an interruption.
+
+To search again for the neurons closest to the paper's example panels (this reads saved results and spikes, and changes no analysis):
+
+```bash
+env/Scripts/python.exe analysis/select_examples.py
+```
 
 A one-session run writes to `results_smoke/` and `output_smoke/` and keeps regions seen in one mouse, so its numbers are not comparable with the paper.
+
+## Report
+
+`report/report.pdf` compares every figure with the paper, panel by panel. To rebuild it (no analysis runs, and it needs XeLaTeX):
+
+```bash
+env/Scripts/python.exe report/make_report.py
+```
 
 ## Notebook
 
@@ -61,4 +76,4 @@ A one-session run writes to `results_smoke/` and `output_smoke/` and keeps regio
 
 ## Swapping an example neuron
 
-`results/example_neurons.json` holds the chosen neuron per panel, and `results/example_candidates.csv` lists the top five for each. Edit the JSON, then rerun with `--figures-only`.
+`results/example_neurons.json` holds the chosen neuron per panel, and `results/example_scores.csv` lists the top five for each with their match error. Edit the JSON, then run `run_all.py`.

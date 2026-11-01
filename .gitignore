@@ -1,0 +1,17 @@
+# Too large for git. See analysis/README.md for how to restore these.
+data/
+env/
+analysis/results/
+analysis/results_smoke/
+analysis/results_notebook/
+analysis/output_smoke/
+analysis/output_notebook/
+
+# Local project instructions
+CLAUDE.md
+
+# Python and notebook byproducts
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/

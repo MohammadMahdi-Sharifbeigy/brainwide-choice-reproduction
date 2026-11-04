@@ -99,12 +99,12 @@ def fig1(res):
 
 
 def _probe_tracks(cv, res):
-    views = (("Sagittal", (500, 50, 635, 130), 2, 0, 1), ("Horizontal", (500, 150, 635, 255), 1, 0, 2), ("Coronal", (510, 275, 620, 355), 0, 2, 1))
+    views = (("Sagittal", (500, 50, 635, 130), 2, 0, 1), ("Horizontal", (500, 150, 635, 255), 1, 0, 2), ("Coronal", (500, 263, 624, 350), 0, 2, 1))
     subjects = sorted({subject_of(s) for s in res.sessions})
     for name, box, proj, hor, ver in views:
         a = cv.ax(box)
         sil = atlas.silhouette(proj)
-        img = sil if proj == 1 else sil.T if proj == 2 else sil.T
+        img = sil if proj == 1 else sil.T if proj == 2 else sil  # coronal silhouette is already DV x LR
         if proj == 1:
             a.contour(img.T, levels=[0.5], colors="k", linewidths=0.6)
         else:
@@ -123,7 +123,8 @@ def _probe_tracks(cv, res):
             a.invert_xaxis()  # anterior to the right, as the paper's axes show
         a.set_axis_off()
         cv.text(box[2] - 25, box[1] - 7, name, style="italic", fontsize=6.5)
-        cv.text(box[0] + 22, box[3] - 18, {"Sagittal": "D\n↑ → A", "Horizontal": "L\n↑ → A", "Coronal": "D\nL ← ↑"}[name], fontsize=5.5)
+        corner = (box[2] - 40, box[3] - 22) if name == "Coronal" else (box[0] + 22, box[3] - 18)  # the paper puts the coronal axes on the right
+        cv.text(*corner, {"Sagittal": "D\n↑ → A", "Horizontal": "L\n↑ → A", "Coronal": "    D\nL ← ↑"}[name], fontsize=5.5)
     for i, s in enumerate(subjects[:10]):
         cv.text(508 + i * 10, 385, str(i + 1), color=SUBJECT_COLORS[i], fontweight="bold", fontsize=6.5)
     cv.text(560, 371, "Mouse", fontsize=6.5)

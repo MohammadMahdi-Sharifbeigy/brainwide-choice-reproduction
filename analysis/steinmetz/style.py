@@ -64,7 +64,10 @@ class Canvas:
     def __init__(self, cfg, name, paper_png=None, scale=1.0, overlay=True, height=None):
         self.cfg, self.name, self.paper, self.scale, self.overlay = cfg, name, paper_png, scale, overlay
         self.key = (paper_png or "").replace(".png", "").replace("extended-data-fig", "ext")
-        self.w, self.h = Image.open(PAPER_FIGS / paper_png).size if paper_png else (812, 620)
+        self.w, self.h = (812, 620)
+        if paper_png:
+            with Image.open(PAPER_FIGS / paper_png) as im:
+                self.w, self.h = im.size
         self.h = height or self.h
         plt.rcParams["font.size"] = 6.5 * scale
         self.fig = plt.figure(figsize=(self.INCHES_WIDE, self.INCHES_WIDE * self.h / self.w), facecolor="white")
